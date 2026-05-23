@@ -22,9 +22,21 @@ run = "docker compose exec db bash"
 description = "db コンテナの PostgreSQL に接続する"
 run = "docker compose exec db psql -U kinti -d kinti"
 
-[tasks."app:migrate"]
+[tasks."php:migrate"]
 description = "Laravel のマイグレーションを実行する"
 run = "docker compose exec php php artisan migrate --force --ansi"
+
+[tasks."php:test"]
+description = "php コンテナで Laravel のテストを実行する"
+run = "docker compose exec php php artisan test"
+
+[tasks."php:pint"]
+description = "php コンテナで Laravel Pint を実行する"
+run = "docker compose exec php vendor/bin/pint --format agent"
+
+[tasks."php:larastan"]
+description = "php コンテナで Larastan を実行する"
+run = "docker compose exec php vendor/bin/phpstan analyse --memory-limit=1G"
 
 [tasks.init]
 description = "Docker を起動し、Laravel の初期セットアップを実行する"
