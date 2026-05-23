@@ -1,0 +1,37 @@
+[tasks."docker:up"]
+description = "Docker コンテナをバックグラウンドで起動する"
+run = "docker compose up -d"
+
+[tasks."docker:down"]
+description = "Docker コンテナを停止して削除する"
+run = "docker compose down --remove-orphans"
+
+[tasks."docker:destroy"]
+description = "Docker コンテナ、ネットワーク、ボリュームを削除する"
+run = "docker compose down -v"
+
+[tasks."php:shell"]
+description = "php コンテナに入る"
+run = "docker compose exec php bash"
+
+[tasks."db:shell"]
+description = "db コンテナに入る"
+run = "docker compose exec db bash"
+
+[tasks."db:psql"]
+description = "db コンテナの PostgreSQL に接続する"
+run = "docker compose exec db psql -U kinti -d kinti"
+
+[tasks."app:migrate"]
+description = "Laravel のマイグレーションを実行する"
+run = "docker compose exec php php artisan migrate --force --ansi"
+
+[tasks.init]
+description = "Docker を起動し、Laravel の初期セットアップを実行する"
+run = """
+docker compose up -d --build
+docker compose exec php composer install
+docker compose exec php cp .env.example .env
+docker compose exec php php artisan key:generate --ansi
+docker compose exec php php artisan migrate --force --ansi
+"""
