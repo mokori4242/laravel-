@@ -182,10 +182,8 @@ describe('異常系', function (): void {
             'email' => LOGIN_USER_EMAIL,
             'password' => 'WrongPassword42Aa!',
         ])
-            ->assertUnprocessable()
-            ->assertInvalid([
-                'email' => ['These credentials do not match our records.'],
-            ]);
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'These credentials do not match our records.');
 
         $this->assertGuest();
     });
@@ -203,10 +201,8 @@ describe('異常系', function (): void {
                 'email' => LOGIN_USER_EMAIL,
                 'password' => 'WrongPassword42Aa!',
             ])
-                ->assertUnprocessable()
-                ->assertInvalid([
-                    'email' => ['These credentials do not match our records.'],
-                ]);
+                ->assertUnauthorized()
+                ->assertJsonPath('message', 'These credentials do not match our records.');
         }
 
         $this->postJson('/api/login', [

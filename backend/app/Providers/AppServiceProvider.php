@@ -30,7 +30,7 @@ class AppServiceProvider extends ServiceProvider
          * @param  Request  $request
          * @return Limit
          */
-        $loginLimiter = function (Request $request): Limit {
+        $emailCredentialLimiter = function (Request $request): Limit {
             /** @var ?string $email */
             $email = $request->input('email');
 
@@ -39,6 +39,8 @@ class AppServiceProvider extends ServiceProvider
             );
         };
 
-        RateLimiter::for('login', $loginLimiter);
+        RateLimiter::for('login', $emailCredentialLimiter);
+        RateLimiter::for('register', $emailCredentialLimiter);
+        RateLimiter::for('google-auth', fn (Request $request): Limit => Limit::perMinute(5)->by($request->ip()));
     }
 }
