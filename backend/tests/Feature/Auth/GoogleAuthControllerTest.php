@@ -3,7 +3,7 @@
 use App\Enums\SocialProvider;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Socialite\Contracts\User as SocialiteUser;
+use Laravel\Socialite\AbstractUser as SocialiteUser;
 use Laravel\Socialite\Socialite;
 
 uses(RefreshDatabase::class);
@@ -12,12 +12,16 @@ function fakeGoogleUser(
     string $id = 'google-sub-123',
     ?string $name = 'Google User',
     ?string $email = 'google@example.com',
+    bool $emailVerified = true,
 ): SocialiteUser {
     $googleUser = Mockery::mock(SocialiteUser::class);
 
     $googleUser->shouldReceive('getId')->andReturn($id);
     $googleUser->shouldReceive('getName')->andReturn($name);
     $googleUser->shouldReceive('getEmail')->andReturn($email);
+    $googleUser->shouldReceive('getRaw')->andReturn([
+        'email_verified' => $emailVerified,
+    ]);
 
     return $googleUser;
 }
@@ -60,7 +64,7 @@ describe('正常系', function (): void {
             'provider_user_id' => 'google-sub-123',
         ]);
 
-        Socialite::fake(SocialProvider::Google->value, fakeGoogleUser(email: null));
+        Socialite::fake(SocialProvider::Google->value, fakeGoogleUser(email: 'linked@example.com'));
 
         $this->getJson('/api/auth/google/callback')
             ->assertOk()
@@ -87,6 +91,7 @@ describe('正常系', function (): void {
             'provider_user_id' => 'google-sub-123',
         ]);
     });
+
 });
 
 describe('異常系', function (): void {
@@ -96,5 +101,18 @@ describe('異常系', function (): void {
             ->assertJsonPath('message', 'Google authentication was cancelled.');
 
         $this->assertGuest();
+    });
+
+    it('Googleのメールアドレスが未検証の場合は拒否する', function (): void {
+        Socialite::fake(SocialProvider::Google->value, fakeGoogleUser(emailVerified: false));
+
+        $this->getJson('/api/auth/google/callback')
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Google email address is not verified.');
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', [
+            'email' => 'google@example.com',
+        ]);
     });
 });

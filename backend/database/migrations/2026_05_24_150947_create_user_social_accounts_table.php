@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['provider', 'provider_user_id']);
-            $table->index(['user_id', 'provider']);
+            $table->unique(['user_id', 'provider']);
         });
     }
 

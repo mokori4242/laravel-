@@ -69,6 +69,54 @@ describe('異常系', function (): void {
         $this->assertGuest();
     });
 
+    it('メールアドレスの形式が不正な場合は登録できない', function (): void {
+        $this->postJson('/api/register', [
+            'name' => REGISTER_USER_NAME,
+            'email' => 'invalid-email',
+            'password' => REGISTER_VALID_PASSWORD,
+            'password_confirmation' => REGISTER_VALID_PASSWORD,
+        ])
+            ->assertUnprocessable()
+            ->assertInvalid([
+                'email' => ['The email field must be a valid email address.'],
+            ]);
+
+        $this->assertGuest();
+    });
+
+    it('メールアドレスが255文字を超える場合は登録できない', function (): void {
+        $this->postJson('/api/register', [
+            'name' => REGISTER_USER_NAME,
+            'email' => 'user@'.str_repeat('a', 63).'.'.str_repeat('b', 63).'.'.str_repeat('c', 63).'.'.str_repeat('d', 58).'.com',
+            'password' => REGISTER_VALID_PASSWORD,
+            'password_confirmation' => REGISTER_VALID_PASSWORD,
+        ])
+            ->assertUnprocessable()
+            ->assertInvalid([
+                'email' => [
+                    'The email field must be a valid email address.',
+                    'The email field must not be greater than 255 characters.',
+                ],
+            ]);
+
+        $this->assertGuest();
+    });
+
+    it('パスワードが8文字未満の場合は登録できない', function (): void {
+        $this->postJson('/api/register', [
+            'name' => REGISTER_USER_NAME,
+            'email' => REGISTER_USER_EMAIL,
+            'password' => 'Aa1!',
+            'password_confirmation' => 'Aa1!',
+        ])
+            ->assertUnprocessable()
+            ->assertInvalid([
+                'password' => ['The password field must be at least 8 characters.'],
+            ]);
+
+        $this->assertGuest();
+    });
+
     it('パスワード確認が一致しない場合は登録できない', function (): void {
         $this->postJson('/api/register', [
             'name' => REGISTER_USER_NAME,

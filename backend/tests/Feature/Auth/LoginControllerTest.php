@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 
@@ -10,13 +9,6 @@ uses(RefreshDatabase::class);
 const LOGIN_USER_NAME = 'Test User';
 const LOGIN_USER_EMAIL = 'user@example.com';
 const VALID_PASSWORD = 'CorrectHorseBatteryStaple42Aa!';
-
-beforeEach(function (): void {
-    // 対象テスト以外、パスワード漏洩チェックで外部通信させない
-    $this->mock(UncompromisedVerifier::class)
-        ->shouldReceive('verify')
-        ->andReturnTrue();
-});
 
 describe('正常系', function (): void {
     it('ログインできる', function (): void {
@@ -39,6 +31,24 @@ describe('正常系', function (): void {
                 ],
             ]);
 
+        $this->assertAuthenticatedAs($user);
+    });
+
+    it('ログイン成功時にセッションIDを再生成する', function (): void {
+        $user = User::factory()->create([
+            'email' => LOGIN_USER_EMAIL,
+            'password' => Hash::make(VALID_PASSWORD),
+        ]);
+
+        $this->withSession(['probe' => 'value']);
+        $previousSessionId = $this->app['session']->getId();
+
+        $this->postJson('/api/login', [
+            'email' => LOGIN_USER_EMAIL,
+            'password' => VALID_PASSWORD,
+        ])->assertOk();
+
+        expect($this->app['session']->getId())->not->toBe($previousSessionId);
         $this->assertAuthenticatedAs($user);
     });
 });
@@ -120,53 +130,20 @@ describe('異常系', function (): void {
         ])
             ->assertUnprocessable()
             ->assertInvalid([
-                'password' => [
-                    'The password field must be a string.',
-                    'The password field must be at least 8 characters.',
-                ],
+                'password' => ['The password field must be a string.'],
             ]);
 
         $this->assertGuest();
     });
 
-    it('パスワードが8文字未満の場合はログインできない', function (): void {
+    it('パスワードが255文字を超える場合はログインできない', function (): void {
         $this->postJson('/api/login', [
             'email' => LOGIN_USER_EMAIL,
-            'password' => 'Aa1!',
+            'password' => str_repeat('a', 256),
         ])
             ->assertUnprocessable()
             ->assertInvalid([
-                'password' => ['The password field must be at least 8 characters.'],
-            ]);
-
-        $this->assertGuest();
-    });
-
-    it('パスワードに大文字と小文字が含まれていない場合はログインできない', function (): void {
-        $this->postJson('/api/login', [
-            'email' => LOGIN_USER_EMAIL,
-            'password' => 'lowercase-password',
-        ])
-            ->assertUnprocessable()
-            ->assertInvalid([
-                'password' => ['The password field must contain at least one uppercase and one lowercase letter.'],
-            ]);
-
-        $this->assertGuest();
-    });
-
-    it('パスワードが漏洩済みの場合はログインできない', function (): void {
-        $this->mock(UncompromisedVerifier::class)
-            ->shouldReceive('verify')
-            ->andReturnFalse();
-
-        $this->postJson('/api/login', [
-            'email' => LOGIN_USER_EMAIL,
-            'password' => VALID_PASSWORD,
-        ])
-            ->assertUnprocessable()
-            ->assertInvalid([
-                'password' => ['The given password has appeared in a data leak. Please choose a different password.'],
+                'password' => ['The password field must not be greater than 255 characters.'],
             ]);
 
         $this->assertGuest();
@@ -181,6 +158,22 @@ describe('異常系', function (): void {
         $this->postJson('/api/login', [
             'email' => LOGIN_USER_EMAIL,
             'password' => 'WrongPassword42Aa!',
+        ])
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'These credentials do not match our records.');
+
+        $this->assertGuest();
+    });
+
+    it('パスワード未設定ユーザーはメールと任意パスワードでログインできない', function (): void {
+        User::factory()->create([
+            'email' => LOGIN_USER_EMAIL,
+            'password' => null,
+        ]);
+
+        $this->postJson('/api/login', [
+            'email' => LOGIN_USER_EMAIL,
+            'password' => VALID_PASSWORD,
         ])
             ->assertUnauthorized()
             ->assertJsonPath('message', 'These credentials do not match our records.');

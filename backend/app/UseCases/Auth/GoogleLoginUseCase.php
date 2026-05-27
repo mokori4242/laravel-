@@ -5,18 +5,28 @@ namespace App\UseCases\Auth;
 use App\Enums\SocialProvider;
 use App\Models\User;
 use App\Models\UserSocialAccount;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Socialite\Contracts\User as GoogleUser;
 use Laravel\Socialite\Facades\Socialite;
 
 class GoogleLoginUseCase
 {
+    /**
+     * @throws AuthenticationException
+     */
     public function __invoke(): User
     {
         $googleUser = Socialite::driver(SocialProvider::Google->value)->user();
         $providerUserId = $googleUser->getId();
         $email = $googleUser->getEmail();
+
+        // Googleが認証済みのメールアドレスのみ許可する（なりすまし防止）
+        if (! $this->hasVerifiedEmail($googleUser)) {
+            throw new AuthenticationException('Google email address is not verified.');
+        }
 
         $user = DB::transaction(function () use ($googleUser, $providerUserId, $email): User {
             $socialAccount = UserSocialAccount::query()
@@ -51,5 +61,14 @@ class GoogleLoginUseCase
         session()->regenerate();
 
         return $user;
+    }
+
+    private function hasVerifiedEmail(GoogleUser $googleUser): bool
+    {
+        if (! method_exists($googleUser, 'getRaw')) {
+            return false;
+        }
+
+        return ($googleUser->getRaw()['email_verified'] ?? false) === true;
     }
 }
