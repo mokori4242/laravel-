@@ -1,0 +1,14 @@
+[mcp_servers.laravel-boost]
+command = "php"
+args = ["artisan", "boost:mcp"]
+
+[features]
+hooks = true
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = 'bash "$(git rev-parse --show-toplevel)/backend/.codex/hooks/after-agent.sh"'
+timeout = 1800
+statusMessage = "Running backend checks"

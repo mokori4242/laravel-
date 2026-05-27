@@ -1,0 +1,25 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - routes
+        - database/factories
+        - database/migrations
+        - database/seeders
+
+    tmpDir: storage/framework/cache/phpstan
+
+    databaseMigrationsPath:
+        - database/migrations
+
+    checkModelProperties: true
+    checkModelAppends: true
+    checkModelMethodVisibility: true
+    parseModelCastsMethod: true
+    noModelMake: true
+    noUnnecessaryCollectionCall: true
+    noUnnecessaryEnumerableToArrayCalls: true
